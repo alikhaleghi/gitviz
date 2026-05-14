@@ -1,0 +1,6 @@
+# Default owners
+* @alikhaleghi
+
+# CI and repo policy files
+/.github/ @alikhaleghi
+/docs/ @alikhaleghi
