@@ -89,37 +89,28 @@ func Run() error {
 	return err
 }
 
+func (m Model) renderDetails(width int) string {
+	body := "Select a commit to inspect."
+	if !m.repoDetected {
+		body = "Welcome to gitviz\n\nTo get started here:\n1. git init\n2. git add .\n3. git commit -m \"chore: initialize project scaffold\""
+	}
+	return StylePanel.Width(width).Render(
+		lipgloss.JoinVertical(
+			lipgloss.Left,
+			StyleBold.Render("Details"),
+			strings.Repeat("─", Max(8, width-2)),
+			body,
+		),
+	)
+}
+
 func (m Model) renderMain(width int) string {
 	colGap := 1
 	leftWidth := (width - colGap) / 2
 	rightWidth := width - colGap - leftWidth
 
-	panelTitle := StyleBold
-	panel := StylePanel
-
-	leftBody := "- (placeholder)"
-	rightBody := "Select a commit to inspect."
-	if !m.repoDetected {
-		leftBody = "No Git repository detected\n\nThis directory is not initialized.\n\nTry: git init"
-		rightBody = "Welcome to gitviz\n\nTo get started here:\n1. git init\n2. git add .\n3. git commit -m \"chore: initialize project scaffold\""
-	}
-
-	left := panel.Width(leftWidth).Render(
-		lipgloss.JoinVertical(
-			lipgloss.Left,
-			panelTitle.Render("Commits"),
-			strings.Repeat("─", Max(8, leftWidth-2)),
-			leftBody,
-		),
-	)
-	right := panel.Width(rightWidth).Render(
-		lipgloss.JoinVertical(
-			lipgloss.Left,
-			panelTitle.Render("Details"),
-			strings.Repeat("─", Max(8, rightWidth-2)),
-			rightBody,
-		),
-	)
+	left := m.renderCommitList(leftWidth)
+	right := m.renderDetails(rightWidth)
 
 	line := StyleMuted.Render(strings.Repeat("─", width))
 	panes := lipgloss.JoinHorizontal(lipgloss.Top, left, strings.Repeat(" ", colGap), right)
