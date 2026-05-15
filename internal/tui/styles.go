@@ -15,8 +15,9 @@ var (
 	StyleBold   = lipgloss.NewStyle().Bold(true)
 	StyleNormal = lipgloss.NewStyle().Foreground(ColorNormal)
 
-	StyleSep   = lipgloss.NewStyle().Foreground(ColorMuted)
-	StylePanel = lipgloss.NewStyle().Padding(0, 1)
+	StyleSep      = lipgloss.NewStyle().Foreground(ColorMuted)
+	StylePanel    = lipgloss.NewStyle().Padding(0, 1)
+	StyleSelected = lipgloss.NewStyle().Bold(true).Foreground(ColorAccent)
 
 	FrameStyle = lipgloss.NewStyle().
 			Border(BorderRounded).

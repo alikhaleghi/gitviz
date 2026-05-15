@@ -19,6 +19,8 @@ type Model struct {
 	status        string
 	commits       []string
 	detailContent string
+	cursor        int
+	focus         string
 }
 
 // NewModel builds a default model with lightweight runtime context.
@@ -52,6 +54,7 @@ func NewModel() Model {
 		view:         "commits",
 		status:       status,
 		commits:      commits,
+		focus:        "commits",
 	}
 }
 
@@ -65,6 +68,57 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
+		case "up", "k":
+			if m.focus == "commits" && m.cursor > 0 {
+				m.cursor--
+			}
+		case "down", "j":
+			if m.focus == "commits" && m.cursor < len(m.commits)-1 {
+				m.cursor++
+			}
+		case "tab":
+			if m.focus == "commits" {
+				m.focus = "details"
+			} else {
+				m.focus = "commits"
+			}
+		case "shift+tab":
+			if m.focus == "details" {
+				m.focus = "commits"
+			} else {
+				m.focus = "details"
+			}
+		case "enter":
+			if m.focus == "commits" && m.repoDetected && len(m.commits) > 0 && m.commits[0] != "- (placeholder)" {
+				hash := strings.SplitN(m.commits[m.cursor], " ", 2)[0]
+				out, err := exec.Command("git", "show", "--stat", hash).Output()
+				if err == nil {
+					m.detailContent = string(out)
+					m.focus = "details"
+					m.status = "Status: inspected " + hash
+				}
+			}
+		case "esc":
+			if m.focus == "details" {
+				m.focus = "commits"
+			}
+		case "r":
+			if m.repoDetected {
+				log, err := exec.Command("git", "log", "--oneline", "-20").Output()
+				if err == nil {
+					out := strings.TrimSpace(string(log))
+					if out != "" {
+						m.commits = strings.Split(out, "\n")
+					}
+				}
+				if m.cursor >= len(m.commits) {
+					m.cursor = len(m.commits) - 1
+				}
+				m.status = "Status: refreshed"
+			}
+		case "b":
+			m.view = "branches"
+			m.status = "Status: branch view (placeholder)"
 		}
 	case tea.WindowSizeMsg:
 		m.width = msg.Width

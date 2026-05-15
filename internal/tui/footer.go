@@ -13,5 +13,8 @@ func (m Model) renderStatus(width int) string {
 
 func (m Model) renderFooter(width int) string {
 	help := "q quit  r refresh  ↑↓ move  enter inspect  b branches"
+	if m.focus == "details" {
+		help = "q quit  Tab focus list  esc back"
+	}
 	return StyleMuted.Render(lipgloss.NewStyle().Width(width).Render(help))
 }
