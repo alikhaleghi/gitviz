@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"os"
 	"strings"
 
@@ -88,25 +87,6 @@ func Run() error {
 	p := tea.NewProgram(NewModel(), tea.WithAltScreen())
 	_, err := p.Run()
 	return err
-}
-
-func (m Model) renderHeader(width int) string {
-	title := StyleAccent.Render("gitviz")
-	repoState := "none"
-	if m.repoDetected {
-		repoState = "detected"
-	}
-
-	meta := fmt.Sprintf("Repo: %s  |  View: %s", repoState, m.view)
-	path := fmt.Sprintf("Path: %s", m.path)
-	line := strings.Repeat("─", width)
-
-	return lipgloss.JoinVertical(
-		lipgloss.Left,
-		fmt.Sprintf("%s  %s", title, StyleMuted.Render(meta)),
-		StyleMuted.Render(path),
-		StyleMuted.Render(line),
-	)
 }
 
 func (m Model) renderMain(width int) string {
