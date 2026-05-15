@@ -101,13 +101,3 @@ func (m Model) renderMain(width int) string {
 	panes := lipgloss.JoinHorizontal(lipgloss.Top, left, strings.Repeat(" ", colGap), right)
 	return lipgloss.JoinVertical(lipgloss.Left, panes, line)
 }
-
-func (m Model) renderStatus(width int) string {
-	line := StyleMuted.Render(strings.Repeat("─", width))
-	return lipgloss.JoinVertical(lipgloss.Left, m.status, line)
-}
-
-func (m Model) renderFooter(width int) string {
-	help := "q quit  r refresh  ↑↓ move  enter inspect  b branches"
-	return StyleMuted.Render(lipgloss.NewStyle().Width(width).Render(help))
-}
