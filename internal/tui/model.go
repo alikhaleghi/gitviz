@@ -68,11 +68,7 @@ func (m Model) View() string {
 		m.height = 30
 	}
 
-	frame := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("8")).
-		Padding(0, 1).
-		Width(m.width - 2)
+	frame := FrameStyle.Width(m.width - 2)
 
 	contentWidth := frame.GetWidth() - frame.GetHorizontalPadding()
 	if contentWidth < 40 {
@@ -95,7 +91,7 @@ func Run() error {
 }
 
 func (m Model) renderHeader(width int) string {
-	title := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("12")).Render("gitviz")
+	title := StyleAccent.Render("gitviz")
 	repoState := "none"
 	if m.repoDetected {
 		repoState = "detected"
@@ -105,12 +101,11 @@ func (m Model) renderHeader(width int) string {
 	path := fmt.Sprintf("Path: %s", m.path)
 	line := strings.Repeat("─", width)
 
-	muted := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
-		fmt.Sprintf("%s  %s", title, muted.Render(meta)),
-		muted.Render(path),
-		muted.Render(line),
+		fmt.Sprintf("%s  %s", title, StyleMuted.Render(meta)),
+		StyleMuted.Render(path),
+		StyleMuted.Render(line),
 	)
 }
 
@@ -119,8 +114,8 @@ func (m Model) renderMain(width int) string {
 	leftWidth := (width - colGap) / 2
 	rightWidth := width - colGap - leftWidth
 
-	panelTitle := lipgloss.NewStyle().Bold(true)
-	panel := lipgloss.NewStyle().Padding(0, 1)
+	panelTitle := StyleBold
+	panel := StylePanel
 
 	leftBody := "- (placeholder)"
 	rightBody := "Select a commit to inspect."
@@ -133,7 +128,7 @@ func (m Model) renderMain(width int) string {
 		lipgloss.JoinVertical(
 			lipgloss.Left,
 			panelTitle.Render("Commits"),
-			strings.Repeat("─", max(8, leftWidth-2)),
+			strings.Repeat("─", Max(8, leftWidth-2)),
 			leftBody,
 		),
 	)
@@ -141,31 +136,22 @@ func (m Model) renderMain(width int) string {
 		lipgloss.JoinVertical(
 			lipgloss.Left,
 			panelTitle.Render("Details"),
-			strings.Repeat("─", max(8, rightWidth-2)),
+			strings.Repeat("─", Max(8, rightWidth-2)),
 			rightBody,
 		),
 	)
 
-	line := lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render(strings.Repeat("─", width))
+	line := StyleMuted.Render(strings.Repeat("─", width))
 	panes := lipgloss.JoinHorizontal(lipgloss.Top, left, strings.Repeat(" ", colGap), right)
 	return lipgloss.JoinVertical(lipgloss.Left, panes, line)
 }
 
 func (m Model) renderStatus(width int) string {
-	muted := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-	line := muted.Render(strings.Repeat("─", width))
+	line := StyleMuted.Render(strings.Repeat("─", width))
 	return lipgloss.JoinVertical(lipgloss.Left, m.status, line)
 }
 
 func (m Model) renderFooter(width int) string {
 	help := "q quit  r refresh  ↑↓ move  enter inspect  b branches"
-	muted := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-	return muted.Render(lipgloss.NewStyle().Width(width).Render(help))
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
+	return StyleMuted.Render(lipgloss.NewStyle().Width(width).Render(help))
 }
