@@ -79,7 +79,14 @@ func (m Model) View() string {
 	status := m.renderStatus(contentWidth)
 	footer := m.renderFooter(contentWidth)
 
-	body := lipgloss.JoinVertical(lipgloss.Left, header, main, status, footer)
+	sections := []string{header, main}
+	if m.height >= 8 {
+		sections = append(sections, status)
+	}
+	if m.height >= 6 {
+		sections = append(sections, footer)
+	}
+	body := lipgloss.JoinVertical(lipgloss.Left, sections...)
 	return frame.Render(body) + "\n"
 }
 
@@ -91,13 +98,20 @@ func Run() error {
 
 func (m Model) renderMain(width int) string {
 	colGap := 1
-	leftWidth := (width - colGap) / 2
-	rightWidth := width - colGap - leftWidth
+	minPaneWidth := 20
 
-	left := m.renderCommitList(leftWidth)
-	right := m.renderDetails(rightWidth)
+	if width >= minPaneWidth*2+colGap {
+		leftWidth := (width - colGap) / 2
+		rightWidth := width - colGap - leftWidth
+		left := m.renderCommitList(leftWidth)
+		right := m.renderDetails(rightWidth)
+		panes := lipgloss.JoinHorizontal(lipgloss.Top, left, strings.Repeat(" ", colGap), right)
+		line := StyleMuted.Render(strings.Repeat("─", width))
+		return lipgloss.JoinVertical(lipgloss.Left, panes, line)
+	}
 
-	line := StyleMuted.Render(strings.Repeat("─", width))
-	panes := lipgloss.JoinHorizontal(lipgloss.Top, left, strings.Repeat(" ", colGap), right)
-	return lipgloss.JoinVertical(lipgloss.Left, panes, line)
+	left := m.renderCommitList(width)
+	right := m.renderDetails(width)
+	sep := StyleMuted.Render(strings.Repeat("─", width))
+	return lipgloss.JoinVertical(lipgloss.Left, left, sep, right)
 }
