@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"os"
 	"strings"
 
@@ -68,11 +67,7 @@ func (m Model) View() string {
 		m.height = 30
 	}
 
-	frame := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("8")).
-		Padding(0, 1).
-		Width(m.width - 2)
+	frame := FrameStyle.Width(m.width - 2)
 
 	contentWidth := frame.GetWidth() - frame.GetHorizontalPadding()
 	if contentWidth < 40 {
@@ -84,7 +79,14 @@ func (m Model) View() string {
 	status := m.renderStatus(contentWidth)
 	footer := m.renderFooter(contentWidth)
 
-	body := lipgloss.JoinVertical(lipgloss.Left, header, main, status, footer)
+	sections := []string{header, main}
+	if m.height >= 8 {
+		sections = append(sections, status)
+	}
+	if m.height >= 6 {
+		sections = append(sections, footer)
+	}
+	body := lipgloss.JoinVertical(lipgloss.Left, sections...)
 	return frame.Render(body) + "\n"
 }
 
@@ -94,78 +96,22 @@ func Run() error {
 	return err
 }
 
-func (m Model) renderHeader(width int) string {
-	title := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("12")).Render("gitviz")
-	repoState := "none"
-	if m.repoDetected {
-		repoState = "detected"
-	}
-
-	meta := fmt.Sprintf("Repo: %s  |  View: %s", repoState, m.view)
-	path := fmt.Sprintf("Path: %s", m.path)
-	line := strings.Repeat("─", width)
-
-	muted := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-	return lipgloss.JoinVertical(
-		lipgloss.Left,
-		fmt.Sprintf("%s  %s", title, muted.Render(meta)),
-		muted.Render(path),
-		muted.Render(line),
-	)
-}
-
 func (m Model) renderMain(width int) string {
 	colGap := 1
-	leftWidth := (width - colGap) / 2
-	rightWidth := width - colGap - leftWidth
+	minPaneWidth := 20
 
-	panelTitle := lipgloss.NewStyle().Bold(true)
-	panel := lipgloss.NewStyle().Padding(0, 1)
-
-	leftBody := "- (placeholder)"
-	rightBody := "Select a commit to inspect."
-	if !m.repoDetected {
-		leftBody = "No Git repository detected\n\nThis directory is not initialized.\n\nTry: git init"
-		rightBody = "Welcome to gitviz\n\nTo get started here:\n1. git init\n2. git add .\n3. git commit -m \"chore: initialize project scaffold\""
+	if width >= minPaneWidth*2+colGap {
+		leftWidth := (width - colGap) / 2
+		rightWidth := width - colGap - leftWidth
+		left := m.renderCommitList(leftWidth)
+		right := m.renderDetails(rightWidth)
+		panes := lipgloss.JoinHorizontal(lipgloss.Top, left, strings.Repeat(" ", colGap), right)
+		line := StyleMuted.Render(strings.Repeat("─", width))
+		return lipgloss.JoinVertical(lipgloss.Left, panes, line)
 	}
 
-	left := panel.Width(leftWidth).Render(
-		lipgloss.JoinVertical(
-			lipgloss.Left,
-			panelTitle.Render("Commits"),
-			strings.Repeat("─", max(8, leftWidth-2)),
-			leftBody,
-		),
-	)
-	right := panel.Width(rightWidth).Render(
-		lipgloss.JoinVertical(
-			lipgloss.Left,
-			panelTitle.Render("Details"),
-			strings.Repeat("─", max(8, rightWidth-2)),
-			rightBody,
-		),
-	)
-
-	line := lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render(strings.Repeat("─", width))
-	panes := lipgloss.JoinHorizontal(lipgloss.Top, left, strings.Repeat(" ", colGap), right)
-	return lipgloss.JoinVertical(lipgloss.Left, panes, line)
-}
-
-func (m Model) renderStatus(width int) string {
-	muted := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-	line := muted.Render(strings.Repeat("─", width))
-	return lipgloss.JoinVertical(lipgloss.Left, m.status, line)
-}
-
-func (m Model) renderFooter(width int) string {
-	help := "q quit  r refresh  ↑↓ move  enter inspect  b branches"
-	muted := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-	return muted.Render(lipgloss.NewStyle().Width(width).Render(help))
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
+	left := m.renderCommitList(width)
+	right := m.renderDetails(width)
+	sep := StyleMuted.Render(strings.Repeat("─", width))
+	return lipgloss.JoinVertical(lipgloss.Left, left, sep, right)
 }
