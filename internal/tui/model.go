@@ -88,7 +88,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				m.focus = "details"
 			}
-		case "enter":
+		case "enter", "e":
 			if m.focus == "commits" && m.repoDetected && len(m.commits) > 0 && m.commits[0] != "- (placeholder)" {
 				hash := strings.SplitN(m.commits[m.cursor], " ", 2)[0]
 				out, err := exec.Command("git", "show", "--stat", hash).Output()
