@@ -2,6 +2,7 @@ package tui
 
 import (
 	"os"
+	"os/exec"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -10,12 +11,14 @@ import (
 
 // Model owns UI state for the initial scaffold.
 type Model struct {
-	width        int
-	height       int
-	path         string
-	repoDetected bool
-	view         string
-	status       string
+	width         int
+	height        int
+	path          string
+	repoDetected  bool
+	view          string
+	status        string
+	commits       []string
+	detailContent string
 }
 
 // NewModel builds a default model with lightweight runtime context.
@@ -28,8 +31,19 @@ func NewModel() Model {
 	_, statErr := os.Stat(".git")
 	repoDetected := statErr == nil
 	status := "Status: waiting for repository data"
+	commits := []string{"- (placeholder)"}
+
 	if !repoDetected {
 		status = "Status: no repository detected"
+	} else {
+		log, err := exec.Command("git", "log", "--oneline", "-20").Output()
+		if err == nil {
+			out := strings.TrimSpace(string(log))
+			if out != "" {
+				commits = strings.Split(out, "\n")
+				status = "Status: loaded commits"
+			}
+		}
 	}
 
 	return Model{
@@ -37,6 +51,7 @@ func NewModel() Model {
 		repoDetected: repoDetected,
 		view:         "commits",
 		status:       status,
+		commits:      commits,
 	}
 }
 
