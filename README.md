@@ -65,14 +65,7 @@ cd my-project
 gitviz
 ```
 
-> **Tip:** Verify installation (no error messages):
-> ```bash
-> PATH="$PATH:$(go env GOPATH)/bin" command -v gitviz >/dev/null 2>&1 && echo "✓ gitviz is ready" || echo "✗ not installed — run: go install github.com/alikhaleghi/gitviz/cmd/gitviz@latest"
-> ```
-> If `gitviz` still isn't found after install, make it permanent:
-> ```bash
-> echo "export PATH=\$PATH:$(go env GOPATH)/bin" >> ~/.bashrc && source ~/.bashrc && echo "✓ PATH updated"
-> ```
+
 
 ### From source
 
