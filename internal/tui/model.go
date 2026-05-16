@@ -28,20 +28,22 @@ type CommitDetail struct {
 
 // Model owns UI state for the initial scaffold.
 type Model struct {
-	width         int
-	height        int
-	path          string
-	repoDetected  bool
-	view          string
-	status        string
-	commits       []Commit
-	detail        *CommitDetail
-	cursor        int
-	focus         string
-	showModal     bool
-	branches      []Branch
-	branchCursor  int
-	currentBranch string
+	width          int
+	height         int
+	path           string
+	repoDetected   bool
+	view           string
+	status         string
+	commits        []Commit
+	detail         *CommitDetail
+	cursor         int
+	focus          string
+	showModal      bool
+	branches       []Branch
+	branchCursor   int
+	currentBranch  string
+	commitOffset   int
+	commitMaxLines int
 }
 
 // NewModel builds a default model with lightweight runtime context.
@@ -102,6 +104,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			} else if m.focus == "commits" && m.cursor > 0 {
 				m.cursor--
+				if m.cursor < m.commitOffset {
+					m.commitOffset = m.cursor
+				}
 				m = m.loadDetail(m.cursor)
 			}
 		case "down", "j", "s":
@@ -114,6 +119,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			} else if m.focus == "commits" && m.cursor < len(m.commits)-1 {
 				m.cursor++
+				if m.commitMaxLines > 0 && m.cursor >= m.commitOffset+m.commitMaxLines {
+					m.commitOffset = m.cursor - m.commitMaxLines + 1
+				}
 				m = m.loadDetail(m.cursor)
 			}
 		case "tab":
@@ -208,6 +216,27 @@ func (m Model) View() string {
 		m.height = 30
 	}
 
+	borderOverhead := 4
+	headerLines := 3
+	statusLines := 2
+	footerLines := 1
+
+	overhead := borderOverhead + headerLines
+	canShowFooter := m.height >= overhead+footerLines
+	canShowStatus := m.height >= overhead+statusLines
+
+	if canShowFooter {
+		overhead += footerLines
+	}
+	if canShowStatus {
+		overhead += statusLines
+	}
+
+	mainHeight := m.height - overhead
+	if mainHeight < 3 {
+		mainHeight = 3
+	}
+
 	frame := FrameStyle.Width(m.width - 2)
 
 	contentWidth := frame.GetWidth() - frame.GetHorizontalPadding()
@@ -216,15 +245,15 @@ func (m Model) View() string {
 	}
 
 	header := m.renderHeader(contentWidth)
-	main := m.renderMain(contentWidth)
+	main := m.renderMain(contentWidth, mainHeight)
 	status := m.renderStatus(contentWidth)
 	footer := m.renderFooter(contentWidth)
 
 	sections := []string{header, main}
-	if m.height >= 8 {
+	if canShowStatus {
 		sections = append(sections, status)
 	}
-	if m.height >= 6 {
+	if canShowFooter {
 		sections = append(sections, footer)
 	}
 	body := lipgloss.JoinVertical(lipgloss.Left, sections...)
@@ -280,6 +309,25 @@ func fetchCommitDetail(hash string) (CommitDetail, error) {
 	return detail, nil
 }
 
+func (m Model) clampScroll(maxLines int) Model {
+	if m.cursor < m.commitOffset {
+		m.commitOffset = m.cursor
+	}
+	if m.commitOffset > m.cursor {
+		m.commitOffset = m.cursor
+	}
+	if maxLines > 0 && m.commitOffset > len(m.commits)-maxLines {
+		m.commitOffset = len(m.commits) - maxLines
+	}
+	if m.commitOffset < 0 {
+		m.commitOffset = 0
+	}
+	if len(m.commits) > 0 && m.cursor >= m.commitOffset+maxLines {
+		m.commitOffset = m.cursor - maxLines + 1
+	}
+	return m
+}
+
 func (m Model) loadDetail(idx int) Model {
 	if !m.repoDetected || idx >= len(m.commits) {
 		m.detail = nil
@@ -303,21 +351,32 @@ func Run() error {
 	return err
 }
 
-func (m Model) renderMain(width int) string {
+func (m Model) renderMain(width int, mainHeight int) string {
 	colGap := 1
 	minPaneWidth := 20
+
+	paneTitleOverhead := 2
+	mainSeparator := 1
+	availableItemsHeight := mainHeight - paneTitleOverhead - mainSeparator
+	if availableItemsHeight < 1 {
+		availableItemsHeight = 1
+	}
 
 	if width >= minPaneWidth*2+colGap {
 		leftWidth := (width - colGap) / 2
 		rightWidth := width - colGap - leftWidth
-		left := m.renderCommitList(leftWidth)
+		m.commitMaxLines = availableItemsHeight
+		m = m.clampScroll(m.commitMaxLines)
+		left := m.renderCommitList(leftWidth, m.commitMaxLines)
 		right := m.renderDetails(rightWidth)
 		panes := lipgloss.JoinHorizontal(lipgloss.Top, left, strings.Repeat(" ", colGap), right)
 		line := StyleMuted.Render(strings.Repeat("─", width))
 		return lipgloss.JoinVertical(lipgloss.Left, panes, line)
 	}
 
-	left := m.renderCommitList(width)
+	m.commitMaxLines = availableItemsHeight
+	m = m.clampScroll(m.commitMaxLines)
+	left := m.renderCommitList(width, m.commitMaxLines)
 	right := m.renderDetails(width)
 	sep := StyleMuted.Render(strings.Repeat("─", width))
 	return lipgloss.JoinVertical(lipgloss.Left, left, sep, right)
