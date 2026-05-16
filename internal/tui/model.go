@@ -216,26 +216,6 @@ func (m Model) View() string {
 		m.height = 30
 	}
 
-	borderOverhead := 2
-	headerLines := 3
-	statusLines := 2
-	footerLines := 1
-
-	overhead := borderOverhead + headerLines
-	canShowFooter := m.height >= overhead+footerLines
-	if canShowFooter {
-		overhead += footerLines
-	}
-	canShowStatus := m.height >= overhead+statusLines
-	if canShowStatus {
-		overhead += statusLines
-	}
-
-	mainHeight := m.height - overhead
-	if mainHeight < 3 {
-		mainHeight = 3
-	}
-
 	frame := FrameStyle.Width(m.width - 2)
 
 	contentWidth := frame.GetWidth() - frame.GetHorizontalPadding()
@@ -244,15 +224,15 @@ func (m Model) View() string {
 	}
 
 	header := m.renderHeader(contentWidth)
-	main := m.renderMain(contentWidth, mainHeight)
+	main := m.renderMain(contentWidth)
 	status := m.renderStatus(contentWidth)
 	footer := m.renderFooter(contentWidth)
 
 	sections := []string{header, main}
-	if canShowStatus {
+	if m.height >= 8 {
 		sections = append(sections, status)
 	}
-	if canShowFooter {
+	if m.height >= 6 {
 		sections = append(sections, footer)
 	}
 	body := lipgloss.JoinVertical(lipgloss.Left, sections...)
@@ -350,21 +330,27 @@ func Run() error {
 	return err
 }
 
-func (m Model) renderMain(width int, mainHeight int) string {
+func (m Model) renderMain(width int) string {
 	colGap := 1
 	minPaneWidth := 20
 
-	paneTitleOverhead := 2
-	mainSeparator := 1
-	availableItemsHeight := mainHeight - paneTitleOverhead - mainSeparator
-	if availableItemsHeight < 1 {
-		availableItemsHeight = 1
+	overhead := 2 + 3 + 1
+	if m.height >= 8 {
+		overhead += 2
 	}
+	if m.height >= 6 {
+		overhead += 1
+	}
+	paneOverhead := 2
 
 	if width >= minPaneWidth*2+colGap {
 		leftWidth := (width - colGap) / 2
 		rightWidth := width - colGap - leftWidth
-		m.commitMaxLines = availableItemsHeight
+		available := m.height - overhead - paneOverhead
+		if available < 1 {
+			available = 1
+		}
+		m.commitMaxLines = available / 2
 		m = m.clampScroll(m.commitMaxLines)
 		left := m.renderCommitList(leftWidth, m.commitMaxLines)
 		right := m.renderDetails(rightWidth)
@@ -373,7 +359,11 @@ func (m Model) renderMain(width int, mainHeight int) string {
 		return lipgloss.JoinVertical(lipgloss.Left, panes, line)
 	}
 
-	m.commitMaxLines = availableItemsHeight
+	available := m.height - overhead - paneOverhead
+	if available < 1 {
+		available = 1
+	}
+	m.commitMaxLines = available
 	m = m.clampScroll(m.commitMaxLines)
 	left := m.renderCommitList(width, m.commitMaxLines)
 	right := m.renderDetails(width)
