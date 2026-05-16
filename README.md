@@ -57,13 +57,15 @@ go install github.com/alikhaleghi/gitviz/cmd/gitviz@latest
 ### Install
 
 ```bash
-# Install globally (binary goes to $(go env GOPATH)/bin/gitviz)
+# Install globally
 go install github.com/alikhaleghi/gitviz/cmd/gitviz@latest
 
 # Then run from any Git repo
 cd my-project
 gitviz
 ```
+
+> **Note:** Binary installs to `$(go env GOPATH)/bin/gitviz`. Make sure that directory is in your `$PATH`, or run `$(go env GOPATH)/bin/gitviz` instead.
 
 ### From source
 
