@@ -10,6 +10,7 @@ go install github.com/alikhaleghi/gitviz/cmd/gitviz@latest
 
 - **Commit browser** — scroll through recent commits with real-time detail loading
 - **Commit inspector** — author, date, full message, and changed files at a glance
+- **Branch list & checkout** — browse and switch branches inline
 - **Dual-pane layout** — responsive split adapts to your terminal width
 - **Fully keyboard-driven** — never reach for the mouse
 - **Contextual help** — footer hints change based on what you're doing
@@ -19,7 +20,7 @@ go install github.com/alikhaleghi/gitviz/cmd/gitviz@latest
 
 ```
 ┌───────────────────────────────────────────────────────┐
-│ gitviz  Repo: detected  |  View: commits              │
+│ gitviz  main  |  View: commits                        │
 │ Path: /home/user/project                              │
 │───────────────────────────────────────────────────────│
 │ ┌─ Commits ───────────┐  ┌─ Details ───────────────┐ │
@@ -36,7 +37,7 @@ go install github.com/alikhaleghi/gitviz/cmd/gitviz@latest
 │ └──────────────────────┘  └────────────────────────┘ │
 │ Status: inspected a94bc2c                             │
 │───────────────────────────────────────────────────────│
-│ q quit  r refresh  ↑↓/w s move  enter/e inspect      │
+│ q quit  r refresh  ↑↓/w s move  enter/e inspect  b branches │
 └───────────────────────────────────────────────────────┘
 ```
 
@@ -45,11 +46,11 @@ go install github.com/alikhaleghi/gitviz/cmd/gitviz@latest
 | Key | Action |
 |---|---|
 | `↑` `↓` / `k` `j` / `w` `s` | Navigate commit list |
-| `Enter` / `e` | Inspect selected commit |
-| `Tab` / `Shift+Tab` | Switch focus between panes |
-| `Esc` | Return to commit list |
+| `Enter` / `e` | Inspect commit / checkout branch |
+| `Tab` / `Shift+Tab` | Switch focus / close branch modal |
+| `Esc` | Return to commit list / close modal |
+| `b` | Toggle branch list |
 | `r` | Refresh commit log |
-| `b` | Branch view *(coming soon)* |
 | `q` / `Ctrl+C` | Quit |
 
 ## Getting Started
@@ -131,8 +132,8 @@ make lint     # Run go vet
 - [x] Keyboard navigation
 - [x] Git log integration
 - [x] Commit detail inspector
-- [ ] Branch list and switcher
-- [ ] Branch checkout
+- [x] Branch list and switcher
+- [x] Branch checkout
 - [ ] Graph rendering
 - [ ] Diff viewer
 
@@ -147,7 +148,7 @@ make lint     # Run go vet
 | `beta` | Feature-complete for milestone, broader testing |
 | *(none)* | Stable release |
 
-Current: `v0.0.1-dev.3`
+Current: `v0.0.1-dev.5`
 
 ## Contributing
 
