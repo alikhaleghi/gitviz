@@ -38,6 +38,9 @@ type Model struct {
 	detail       *CommitDetail
 	cursor       int
 	focus        string
+	showModal    bool
+	branches     []Branch
+	branchCursor int
 }
 
 // NewModel builds a default model with lightweight runtime context.
@@ -85,12 +88,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "ctrl+c":
 			return m, tea.Quit
 		case "up", "k", "w":
-			if m.focus == "commits" && m.cursor > 0 {
+			if m.showModal && m.branchCursor > 0 {
+				m.branchCursor--
+			} else if m.focus == "commits" && m.cursor > 0 {
 				m.cursor--
 				m = m.loadDetail(m.cursor)
 			}
 		case "down", "j", "s":
-			if m.focus == "commits" && m.cursor < len(m.commits)-1 {
+			if m.showModal && m.branchCursor < len(m.branches)-1 {
+				m.branchCursor++
+			} else if m.focus == "commits" && m.cursor < len(m.commits)-1 {
 				m.cursor++
 				m = m.loadDetail(m.cursor)
 			}
@@ -114,7 +121,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "esc":
-			if m.focus == "details" {
+			if m.showModal {
+				m.showModal = false
+			} else if m.focus == "details" {
 				m.focus = "commits"
 			}
 		case "r":
@@ -129,8 +138,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.status = "Status: refreshed"
 			}
 		case "b":
-			m.view = "branches"
-			m.status = "Status: branch view (placeholder)"
+			if m.repoDetected && !m.showModal {
+				m.showModal = true
+				m.branchCursor = 0
+				out, err := exec.Command("git", "branch", "--all", "--no-color").Output()
+				if err == nil {
+					m.branches = parseBranches(string(out))
+				}
+				m.status = fmt.Sprintf("Status: %d branches", len(m.branches))
+			} else if m.showModal {
+				m.showModal = false
+			}
 		}
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -168,7 +186,13 @@ func (m Model) View() string {
 		sections = append(sections, footer)
 	}
 	body := lipgloss.JoinVertical(lipgloss.Left, sections...)
-	return frame.Render(body) + "\n"
+	rendered := frame.Render(body) + "\n"
+
+	if m.showModal {
+		rendered = m.renderBranchModal()
+	}
+
+	return rendered
 }
 
 func parseGitLog(output string) []Commit {
