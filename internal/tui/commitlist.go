@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -25,13 +26,14 @@ func (m Model) renderCommitList(width int) string {
 
 	var items []string
 	for i, commit := range m.commits {
+		line := fmt.Sprintf("%s  %s", StyleMuted.Render(commit.Hash), commit.Subject)
 		prefix := "  "
 		style := StyleNormal
 		if i == m.cursor {
 			prefix = "▸ "
 			style = StyleSelected
 		}
-		items = append(items, prefix+style.Render(commit))
+		items = append(items, prefix+style.Render(line))
 	}
 	body := strings.Join(items, "\n")
 
