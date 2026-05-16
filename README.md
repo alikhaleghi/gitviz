@@ -1,3 +1,16 @@
+<p align="center">
+  <img src="docs/images/sc1.png" alt="gitviz main view" width="45%">
+  <img src="docs/images/sc2.png" alt="gitviz branch modal" width="45%">
+</p>
+
+<h1 align="center">gitviz</h1>
+
+<p align="center">
+  <a href="https://github.com/alikhaleghi/gitviz/blob/main/LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-428f7e.svg"></a>
+  <a href="https://go.dev/"><img alt="Go" src="https://img.shields.io/badge/go-1.24+-00ADD8.svg?logo=go&logoColor=white"></a>
+  <a href="#keyboard-controls"><img alt="Keyboard-driven" src="https://img.shields.io/badge/keyboard-driven-FF5700.svg"></a>
+</p>
+
 A keyboard-driven terminal UI for exploring Git history, inspecting commits, and navigating branches — all without leaving your terminal.
 
 ```bash
@@ -15,31 +28,6 @@ go install github.com/alikhaleghi/gitviz/cmd/gitviz@latest
 - **Fully keyboard-driven** — never reach for the mouse
 - **Contextual help** — footer hints change based on what you're doing
 - **Git CLI-native** — no CGO, no libgit2, just `git` commands
-
-## Demo
-
-```
-┌───────────────────────────────────────────────────────┐
-│ gitviz  main  |  View: commits                        │
-│ Path: /home/user/project                              │
-│───────────────────────────────────────────────────────│
-│ ┌─ Commits ───────────┐  ┌─ Details ───────────────┐ │
-│ │ ▸ a94bc2c  feat(git) │  │ a94bc2c                 │ │
-│ │   10f55bb  feat(tui) │  │ Author:  John           │ │
-│ │   eb87d9c  Merge PR  │  │ Date:    2026-05-15     │ │
-│ │   136ffbe  feat(git) │  │                         │ │
-│ │                      │  │ added commit detail     │ │
-│ │                      │  │ inspector with...       │ │
-│ │                      │  │                         │ │
-│ │                      │  │ ── Files ──             │ │
-│ │                      │  │ M  model.go             │ │
-│ │                      │  │ M  details.go           │ │
-│ └──────────────────────┘  └────────────────────────┘ │
-│ Status: inspected a94bc2c                             │
-│───────────────────────────────────────────────────────│
-│ q quit  r refresh  ↑↓/w s move  enter/e inspect  b branches │
-└───────────────────────────────────────────────────────┘
-```
 
 ## Keyboard Controls
 
@@ -65,8 +53,6 @@ go install github.com/alikhaleghi/gitviz/cmd/gitviz@latest
 cd my-project
 gitviz
 ```
-
-
 
 ### From source
 
@@ -95,6 +81,7 @@ internal/
     ├── header.go    # Header bar renderer
     ├── commitlist.go# Commit list pane
     ├── details.go   # Commit detail inspector
+    ├── branches.go  # Branch modal and checkout
     ├── footer.go    # Status strip and help bar
     └── styles.go    # Lip Gloss styles and helpers
 pkg/                 # Reusable packages (future)
