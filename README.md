@@ -135,7 +135,7 @@ make lint     # Run go vet
 | `beta` | Feature-complete for milestone, broader testing |
 | *(none)* | Stable release |
 
-Current: `v0.0.1-dev.5`
+Current: `v0.0.1-alpha.1`
 
 ## Contributing
 
