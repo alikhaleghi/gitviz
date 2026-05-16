@@ -16,18 +16,28 @@ type Commit struct {
 	Subject string
 }
 
+// CommitDetail holds parsed output for a single inspected commit.
+type CommitDetail struct {
+	Hash   string
+	Author string
+	Email  string
+	Date   string
+	Body   string
+	Files  []string
+}
+
 // Model owns UI state for the initial scaffold.
 type Model struct {
-	width         int
-	height        int
-	path          string
-	repoDetected  bool
-	view          string
-	status        string
-	commits       []Commit
-	detailContent string
-	cursor        int
-	focus         string
+	width        int
+	height       int
+	path         string
+	repoDetected bool
+	view         string
+	status       string
+	commits      []Commit
+	detail       *CommitDetail
+	cursor       int
+	focus        string
 }
 
 // NewModel builds a default model with lightweight runtime context.
@@ -50,7 +60,7 @@ func NewModel() Model {
 		}
 	}
 
-	return Model{
+	m := Model{
 		path:         cwd,
 		repoDetected: repoDetected,
 		view:         "commits",
@@ -58,6 +68,10 @@ func NewModel() Model {
 		commits:      commits,
 		focus:        "commits",
 	}
+	if len(commits) > 0 {
+		m = m.loadDetail(0)
+	}
+	return m
 }
 
 func (m Model) Init() tea.Cmd {
@@ -73,10 +87,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "up", "k", "w":
 			if m.focus == "commits" && m.cursor > 0 {
 				m.cursor--
+				m = m.loadDetail(m.cursor)
 			}
 		case "down", "j", "s":
 			if m.focus == "commits" && m.cursor < len(m.commits)-1 {
 				m.cursor++
+				m = m.loadDetail(m.cursor)
 			}
 		case "tab":
 			if m.focus == "commits" {
@@ -91,13 +107,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.focus = "details"
 			}
 		case "enter", "e":
-			if m.focus == "commits" && m.repoDetected && m.cursor < len(m.commits) {
-				hash := m.commits[m.cursor].Hash
-				out, err := exec.Command("git", "show", "--stat", hash).Output()
-				if err == nil {
-					m.detailContent = string(out)
+			if m.focus == "commits" && m.cursor < len(m.commits) {
+				m = m.loadDetail(m.cursor)
+				if m.detail != nil {
 					m.focus = "details"
-					m.status = "Status: inspected " + hash
 				}
 			}
 		case "esc":
@@ -168,6 +181,54 @@ func parseGitLog(output string) []Commit {
 		}
 	}
 	return commits
+}
+
+func fetchCommitDetail(hash string) (CommitDetail, error) {
+	out, err := exec.Command("git", "log", "-1", "--format=%H%n%an%n%ae%n%aI%n%b", hash).Output()
+	if err != nil {
+		return CommitDetail{}, err
+	}
+	lines := strings.SplitN(string(out), "\n", 5)
+	if len(lines) < 4 {
+		return CommitDetail{}, fmt.Errorf("unexpected git log output")
+	}
+
+	detail := CommitDetail{
+		Hash:   lines[0],
+		Author: lines[1],
+		Email:  lines[2],
+		Date:   lines[3],
+	}
+	if len(lines) > 4 {
+		detail.Body = strings.TrimSpace(lines[4])
+	}
+
+	files, err := exec.Command("git", "diff-tree", "--no-commit-id", "-r", "--name-status", hash).Output()
+	if err == nil {
+		raw := strings.TrimSpace(string(files))
+		if raw != "" {
+			detail.Files = strings.Split(raw, "\n")
+		}
+	}
+
+	return detail, nil
+}
+
+func (m Model) loadDetail(idx int) Model {
+	if !m.repoDetected || idx >= len(m.commits) {
+		m.detail = nil
+		return m
+	}
+	hash := m.commits[idx].Hash
+	detail, err := fetchCommitDetail(hash)
+	if err != nil {
+		m.detail = nil
+		m.status = "Status: failed to load commit details"
+		return m
+	}
+	m.detail = &detail
+	m.status = fmt.Sprintf("Status: inspected %s", hash)
+	return m
 }
 
 func Run() error {
