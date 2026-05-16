@@ -28,19 +28,20 @@ type CommitDetail struct {
 
 // Model owns UI state for the initial scaffold.
 type Model struct {
-	width        int
-	height       int
-	path         string
-	repoDetected bool
-	view         string
-	status       string
-	commits      []Commit
-	detail       *CommitDetail
-	cursor       int
-	focus        string
-	showModal    bool
-	branches     []Branch
-	branchCursor int
+	width         int
+	height        int
+	path          string
+	repoDetected  bool
+	view          string
+	status        string
+	commits       []Commit
+	detail        *CommitDetail
+	cursor        int
+	focus         string
+	showModal     bool
+	branches      []Branch
+	branchCursor  int
+	currentBranch string
 }
 
 // NewModel builds a default model with lightweight runtime context.
@@ -54,6 +55,7 @@ func NewModel() Model {
 	repoDetected := statErr == nil
 	status := "Status: no repository detected"
 	commits := []Commit{}
+	currentBranch := ""
 
 	if repoDetected {
 		log, err := exec.Command("git", "log", "--oneline", "-n", "50").Output()
@@ -61,15 +63,18 @@ func NewModel() Model {
 			commits = parseGitLog(string(log))
 			status = fmt.Sprintf("Status: loaded %d commits", len(commits))
 		}
+		branch, _ := exec.Command("git", "branch", "--show-current").Output()
+		currentBranch = strings.TrimSpace(string(branch))
 	}
 
 	m := Model{
-		path:         cwd,
-		repoDetected: repoDetected,
-		view:         "commits",
-		status:       status,
-		commits:      commits,
-		focus:        "commits",
+		path:          cwd,
+		repoDetected:  repoDetected,
+		view:          "commits",
+		status:        status,
+		commits:       commits,
+		focus:         "commits",
+		currentBranch: currentBranch,
 	}
 	if len(commits) > 0 {
 		m = m.loadDetail(0)
@@ -88,15 +93,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "ctrl+c":
 			return m, tea.Quit
 		case "up", "k", "w":
-			if m.showModal && m.branchCursor > 0 {
-				m.branchCursor--
+			if m.showModal {
+				for i := m.branchCursor - 1; i >= 0; i-- {
+					if !m.branches[i].Remote {
+						m.branchCursor = i
+						break
+					}
+				}
 			} else if m.focus == "commits" && m.cursor > 0 {
 				m.cursor--
 				m = m.loadDetail(m.cursor)
 			}
 		case "down", "j", "s":
-			if m.showModal && m.branchCursor < len(m.branches)-1 {
-				m.branchCursor++
+			if m.showModal {
+				for i := m.branchCursor + 1; i < len(m.branches); i++ {
+					if !m.branches[i].Remote {
+						m.branchCursor = i
+						break
+					}
+				}
 			} else if m.focus == "commits" && m.cursor < len(m.commits)-1 {
 				m.cursor++
 				m = m.loadDetail(m.cursor)
@@ -114,7 +129,34 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.focus = "details"
 			}
 		case "enter", "e":
-			if m.focus == "commits" && m.cursor < len(m.commits) {
+			if m.showModal && m.branchCursor < len(m.branches) {
+				b := m.branches[m.branchCursor]
+				if b.Remote {
+					m.status = "Cannot checkout a remote branch"
+				} else if b.Current {
+					m.showModal = false
+					m.status = fmt.Sprintf("Already on %s", b.Name)
+				} else {
+					err := exec.Command("git", "checkout", b.Name).Run()
+					if err != nil {
+						m.status = fmt.Sprintf("Failed to checkout %s", b.Name)
+					} else {
+						m.currentBranch = b.Name
+						m.showModal = false
+						m.status = fmt.Sprintf("Switched to %s", b.Name)
+						log, logErr := exec.Command("git", "log", "--oneline", "-n", "50").Output()
+						if logErr == nil {
+							m.commits = parseGitLog(string(log))
+						}
+						if m.cursor >= len(m.commits) {
+							m.cursor = len(m.commits) - 1
+						}
+						if len(m.commits) > 0 {
+							m = m.loadDetail(m.cursor)
+						}
+					}
+				}
+			} else if m.focus == "commits" && m.cursor < len(m.commits) {
 				m = m.loadDetail(m.cursor)
 				if m.detail != nil {
 					m.focus = "details"

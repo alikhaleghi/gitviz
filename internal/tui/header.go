@@ -9,12 +9,15 @@ import (
 
 func (m Model) renderHeader(width int) string {
 	title := StyleAccent.Render("gitviz")
-	repoState := "none"
-	if m.repoDetected {
-		repoState = "detected"
+
+	branchInfo := "no repo"
+	if m.repoDetected && m.currentBranch != "" {
+		branchInfo = m.currentBranch
+	} else if m.repoDetected {
+		branchInfo = "detached HEAD"
 	}
 
-	meta := fmt.Sprintf("Repo: %s  |  View: %s", repoState, m.view)
+	meta := fmt.Sprintf("%s  |  View: %s", StyleAccent.Render(branchInfo), m.view)
 	path := fmt.Sprintf("Path: %s", m.path)
 	line := strings.Repeat("─", width)
 
