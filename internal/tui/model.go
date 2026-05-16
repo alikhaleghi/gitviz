@@ -44,6 +44,7 @@ type Model struct {
 	currentBranch  string
 	commitOffset   int
 	commitMaxLines int
+	branchMsg      string
 }
 
 // NewModel builds a default model with lightweight runtime context.
@@ -96,6 +97,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "up", "k", "w":
 			if m.showModal {
+				m.branchMsg = ""
 				for i := m.branchCursor - 1; i >= 0; i-- {
 					if !m.branches[i].Remote {
 						m.branchCursor = i
@@ -111,6 +113,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "down", "j", "s":
 			if m.showModal {
+				m.branchMsg = ""
 				for i := m.branchCursor + 1; i < len(m.branches); i++ {
 					if !m.branches[i].Remote {
 						m.branchCursor = i
@@ -125,13 +128,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m = m.loadDetail(m.cursor)
 			}
 		case "tab":
-			if m.focus == "commits" {
+			if m.showModal {
+				m.showModal = false
+				m.branchMsg = ""
+			} else if m.focus == "commits" {
 				m.focus = "details"
 			} else {
 				m.focus = "commits"
 			}
 		case "shift+tab":
-			if m.focus == "details" {
+			if m.showModal {
+				m.showModal = false
+				m.branchMsg = ""
+			} else if m.focus == "details" {
 				m.focus = "commits"
 			} else {
 				m.focus = "details"
@@ -140,17 +149,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.showModal && m.branchCursor < len(m.branches) {
 				b := m.branches[m.branchCursor]
 				if b.Remote {
-					m.status = "Cannot checkout a remote branch"
+					m.branchMsg = "Cannot checkout a remote branch"
 				} else if b.Current {
-					m.showModal = false
-					m.status = fmt.Sprintf("Already on %s", b.Name)
+					m.branchMsg = fmt.Sprintf("Already on %s", b.Name)
 				} else {
-					err := exec.Command("git", "checkout", b.Name).Run()
+					out, err := exec.Command("git", "checkout", b.Name).CombinedOutput()
 					if err != nil {
-						m.status = fmt.Sprintf("Failed to checkout %s", b.Name)
+						msg := strings.TrimSpace(string(out))
+						if msg == "" {
+							msg = err.Error()
+						}
+						firstLine, _, _ := strings.Cut(msg, "\n")
+						if len(firstLine) > 60 {
+							firstLine = firstLine[:60] + "..."
+						}
+						m.branchMsg = firstLine
 					} else {
 						m.currentBranch = b.Name
 						m.showModal = false
+						m.branchMsg = ""
 						m.status = fmt.Sprintf("Switched to %s", b.Name)
 						log, logErr := exec.Command("git", "log", "--oneline", "-n", "50").Output()
 						if logErr == nil {
@@ -173,6 +190,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "esc":
 			if m.showModal {
 				m.showModal = false
+				m.branchMsg = ""
 			} else if m.focus == "details" {
 				m.focus = "commits"
 			}
@@ -191,6 +209,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.repoDetected && !m.showModal {
 				m.showModal = true
 				m.branchCursor = 0
+				m.branchMsg = ""
 				out, err := exec.Command("git", "branch", "--all", "--no-color").Output()
 				if err == nil {
 					m.branches = parseBranches(string(out))
@@ -198,6 +217,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.status = fmt.Sprintf("Status: %d branches", len(m.branches))
 			} else if m.showModal {
 				m.showModal = false
+				m.branchMsg = ""
 			}
 		}
 	case tea.WindowSizeMsg:
@@ -216,15 +236,28 @@ func (m Model) View() string {
 		m.height = 30
 	}
 
+	// The frame adds rounded border (2 wide, top + bottom lines)
 	frame := FrameStyle.Width(m.width - 2)
-
 	contentWidth := frame.GetWidth() - frame.GetHorizontalPadding()
 	if contentWidth < 40 {
 		contentWidth = 40
 	}
 
+	// Compute vertical space for the main pane row
+	// Outside renderMain: frame border (2) + header (3)
+	mainHeight := m.height - 2 - 3
+	if m.height >= 8 {
+		mainHeight -= 2 // status: text + separator
+	}
+	if m.height >= 6 {
+		mainHeight -= 1 // footer: help text
+	}
+	if mainHeight < 3 {
+		mainHeight = 3
+	}
+
 	header := m.renderHeader(contentWidth)
-	main := m.renderMain(contentWidth)
+	main := m.renderMain(contentWidth, mainHeight)
 	status := m.renderStatus(contentWidth)
 	footer := m.renderFooter(contentWidth)
 
@@ -236,13 +269,17 @@ func (m Model) View() string {
 		sections = append(sections, footer)
 	}
 	body := lipgloss.JoinVertical(lipgloss.Left, sections...)
-	rendered := frame.Render(body) + "\n"
+	rendered := frame.Render(body)
 
 	if m.showModal {
 		rendered = m.renderBranchModal()
 	}
 
-	return rendered
+	lines := strings.Split(rendered, "\n")
+	if len(lines) > m.height {
+		lines = lines[:m.height]
+	}
+	return strings.Join(lines, "\n")
 }
 
 func parseGitLog(output string) []Commit {
@@ -330,43 +367,45 @@ func Run() error {
 	return err
 }
 
-func (m Model) renderMain(width int) string {
+func (m Model) renderMain(width int, mainHeight int) string {
 	colGap := 1
 	minPaneWidth := 20
-
-	overhead := 2 + 3 + 1
-	if m.height >= 8 {
-		overhead += 2
-	}
-	if m.height >= 6 {
-		overhead += 1
-	}
-	paneOverhead := 2
 
 	if width >= minPaneWidth*2+colGap {
 		leftWidth := (width - colGap) / 2
 		rightWidth := width - colGap - leftWidth
-		available := m.height - overhead - paneOverhead
-		if available < 1 {
-			available = 1
-		}
-		m.commitMaxLines = available / 2
+
+		m.commitMaxLines = Max(1, mainHeight-3)
 		m = m.clampScroll(m.commitMaxLines)
 		left := m.renderCommitList(leftWidth, m.commitMaxLines)
 		right := m.renderDetails(rightWidth)
+
+		rightLines := strings.Split(right, "\n")
+		if len(rightLines) > mainHeight-1 {
+			rightLines = rightLines[:mainHeight-1]
+		}
+		right = strings.Join(rightLines, "\n")
+
 		panes := lipgloss.JoinHorizontal(lipgloss.Top, left, strings.Repeat(" ", colGap), right)
-		line := StyleMuted.Render(strings.Repeat("─", width))
-		return lipgloss.JoinVertical(lipgloss.Left, panes, line)
+		sep := StyleMuted.Render(strings.Repeat("─", width))
+		combined := lipgloss.JoinVertical(lipgloss.Left, panes, sep)
+		combinedLines := strings.Split(combined, "\n")
+		if len(combinedLines) > mainHeight {
+			combinedLines = combinedLines[:mainHeight]
+		}
+		return strings.Join(combinedLines, "\n")
 	}
 
-	available := m.height - overhead - paneOverhead
-	if available < 1 {
-		available = 1
-	}
-	m.commitMaxLines = available
+	m.commitMaxLines = Max(1, (mainHeight-2)/2)
 	m = m.clampScroll(m.commitMaxLines)
 	left := m.renderCommitList(width, m.commitMaxLines)
 	right := m.renderDetails(width)
 	sep := StyleMuted.Render(strings.Repeat("─", width))
-	return lipgloss.JoinVertical(lipgloss.Left, left, sep, right)
+
+	combined := lipgloss.JoinVertical(lipgloss.Left, left, sep, right)
+	combinedLines := strings.Split(combined, "\n")
+	if len(combinedLines) > mainHeight {
+		combinedLines = combinedLines[:mainHeight]
+	}
+	return strings.Join(combinedLines, "\n")
 }
