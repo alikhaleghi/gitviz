@@ -56,7 +56,7 @@ func (m Model) renderBranchModal() string {
 	}
 	list := strings.Join(items, "\n")
 
-	footer := StyleMuted.Render("↑↓ nav  esc close")
+	footer := StyleMuted.Render("↑↓ nav  enter checkout  esc close")
 
 	content := lipgloss.JoinVertical(
 		lipgloss.Left,
