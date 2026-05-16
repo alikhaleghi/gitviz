@@ -216,18 +216,17 @@ func (m Model) View() string {
 		m.height = 30
 	}
 
-	borderOverhead := 4
+	borderOverhead := 2
 	headerLines := 3
 	statusLines := 2
 	footerLines := 1
 
 	overhead := borderOverhead + headerLines
 	canShowFooter := m.height >= overhead+footerLines
-	canShowStatus := m.height >= overhead+statusLines
-
 	if canShowFooter {
 		overhead += footerLines
 	}
+	canShowStatus := m.height >= overhead+statusLines
 	if canShowStatus {
 		overhead += statusLines
 	}
