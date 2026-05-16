@@ -65,7 +65,10 @@ cd my-project
 gitviz
 ```
 
-> **Note:** Binary installs to `$(go env GOPATH)/bin/gitviz`. Make sure that directory is in your `$PATH`, or run `$(go env GOPATH)/bin/gitviz` instead.
+> **Tip:** Run this to check and print the fix if `gitviz` isn't on your PATH:
+> ```bash
+> which gitviz || echo "Run: export PATH=\$PATH:$(go env GOPATH)/bin"
+> ```
 
 ### From source
 
