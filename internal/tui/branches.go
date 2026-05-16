@@ -61,14 +61,13 @@ func (m Model) renderBranchModal() string {
 
 	footer := StyleMuted.Render("↑↓ nav  enter/e checkout  esc close")
 
-	content := lipgloss.JoinVertical(
-		lipgloss.Left,
-		title,
-		strings.Repeat("─", Max(8, modalWidth-2)),
-		list,
-		"",
-		footer,
-	)
+	var contentSections []string
+	contentSections = append(contentSections, title, strings.Repeat("─", Max(8, modalWidth-2)), list)
+	if m.branchMsg != "" {
+		contentSections = append(contentSections, StyleMuted.Render(m.branchMsg))
+	}
+	contentSections = append(contentSections, "", footer)
+	content := lipgloss.JoinVertical(lipgloss.Left, contentSections...)
 
 	modal := lipgloss.NewStyle().
 		Width(modalWidth).

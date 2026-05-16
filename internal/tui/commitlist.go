@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-func (m Model) renderCommitList(width int) string {
+func (m Model) renderCommitList(width int, maxLines int) string {
 	if !m.repoDetected {
 		return StylePanel.Width(width).Render(
 			lipgloss.JoinVertical(
@@ -24,9 +24,24 @@ func (m Model) renderCommitList(width int) string {
 		titleStyle = StyleAccent
 	}
 
+	end := m.commitOffset + maxLines
+	if end > len(m.commits) {
+		end = len(m.commits)
+	}
+
 	var items []string
-	for i, commit := range m.commits {
-		line := fmt.Sprintf("%s  %s", StyleMuted.Render(commit.Hash), commit.Subject)
+	// Available subject width inside panel: totalWidth - padding(2) - hash(7) - gap(2) - prefix(2)
+	maxSubject := width - 13
+	if maxSubject < 10 {
+		maxSubject = 10
+	}
+	for i := m.commitOffset; i < end; i++ {
+		commit := m.commits[i]
+		subject := commit.Subject
+		if len(subject) > maxSubject {
+			subject = subject[:maxSubject-3] + "..."
+		}
+		line := fmt.Sprintf("%s  %s", StyleMuted.Render(commit.Hash), subject)
 		prefix := "  "
 		style := StyleNormal
 		if i == m.cursor {
