@@ -93,15 +93,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "ctrl+c":
 			return m, tea.Quit
 		case "up", "k", "w":
-			if m.showModal && m.branchCursor > 0 {
-				m.branchCursor--
+			if m.showModal {
+				for i := m.branchCursor - 1; i >= 0; i-- {
+					if !m.branches[i].Remote {
+						m.branchCursor = i
+						break
+					}
+				}
 			} else if m.focus == "commits" && m.cursor > 0 {
 				m.cursor--
 				m = m.loadDetail(m.cursor)
 			}
 		case "down", "j", "s":
-			if m.showModal && m.branchCursor < len(m.branches)-1 {
-				m.branchCursor++
+			if m.showModal {
+				for i := m.branchCursor + 1; i < len(m.branches); i++ {
+					if !m.branches[i].Remote {
+						m.branchCursor = i
+						break
+					}
+				}
 			} else if m.focus == "commits" && m.cursor < len(m.commits)-1 {
 				m.cursor++
 				m = m.loadDetail(m.cursor)

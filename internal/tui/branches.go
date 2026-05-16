@@ -38,25 +38,28 @@ func (m Model) renderBranchModal() string {
 
 	var items []string
 	for i, b := range m.branches {
-		prefix := "  "
-		style := StyleNormal
-		if i == m.branchCursor {
-			prefix = "▸ "
-			style = StyleSelected
-		}
-		name := b.Name
-		if b.Current {
-			name = fmt.Sprintf("%s %s", StyleBold.Render("◉"), name)
-		}
-		label := style.Render(prefix + name)
+		var line string
 		if b.Remote {
-			label = style.Render(prefix + StyleMuted.Render(name))
+			line = "  " + StyleMuted.Render(b.Name)
+		} else if i == m.branchCursor {
+			prefix := "▸ "
+			name := b.Name
+			if b.Current {
+				name = fmt.Sprintf("%s %s", StyleBold.Render("◉"), name)
+			}
+			line = StyleSelected.Render(prefix + name)
+		} else {
+			name := b.Name
+			if b.Current {
+				name = fmt.Sprintf("  %s %s", StyleBold.Render("◉"), name)
+			}
+			line = "  " + StyleNormal.Render(name)
 		}
-		items = append(items, label)
+		items = append(items, line)
 	}
 	list := strings.Join(items, "\n")
 
-	footer := StyleMuted.Render("↑↓ nav  enter checkout  esc close")
+	footer := StyleMuted.Render("↑↓ nav  enter/e checkout  esc close")
 
 	content := lipgloss.JoinVertical(
 		lipgloss.Left,
