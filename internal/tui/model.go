@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -8,6 +9,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
+
+// Commit holds structured data from git log.
+type Commit struct {
+	Hash    string
+	Subject string
+}
 
 // Model owns UI state for the initial scaffold.
 type Model struct {
@@ -17,7 +24,7 @@ type Model struct {
 	repoDetected  bool
 	view          string
 	status        string
-	commits       []string
+	commits       []Commit
 	detailContent string
 	cursor        int
 	focus         string
@@ -32,19 +39,14 @@ func NewModel() Model {
 
 	_, statErr := os.Stat(".git")
 	repoDetected := statErr == nil
-	status := "Status: waiting for repository data"
-	commits := []string{"- (placeholder)"}
+	status := "Status: no repository detected"
+	commits := []Commit{}
 
-	if !repoDetected {
-		status = "Status: no repository detected"
-	} else {
-		log, err := exec.Command("git", "log", "--oneline", "-20").Output()
+	if repoDetected {
+		log, err := exec.Command("git", "log", "--oneline", "-n", "50").Output()
 		if err == nil {
-			out := strings.TrimSpace(string(log))
-			if out != "" {
-				commits = strings.Split(out, "\n")
-				status = "Status: loaded commits"
-			}
+			commits = parseGitLog(string(log))
+			status = fmt.Sprintf("Status: loaded %d commits", len(commits))
 		}
 	}
 
@@ -89,8 +91,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.focus = "details"
 			}
 		case "enter", "e":
-			if m.focus == "commits" && m.repoDetected && len(m.commits) > 0 && m.commits[0] != "- (placeholder)" {
-				hash := strings.SplitN(m.commits[m.cursor], " ", 2)[0]
+			if m.focus == "commits" && m.repoDetected && m.cursor < len(m.commits) {
+				hash := m.commits[m.cursor].Hash
 				out, err := exec.Command("git", "show", "--stat", hash).Output()
 				if err == nil {
 					m.detailContent = string(out)
@@ -104,12 +106,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "r":
 			if m.repoDetected {
-				log, err := exec.Command("git", "log", "--oneline", "-20").Output()
+				log, err := exec.Command("git", "log", "--oneline", "-n", "50").Output()
 				if err == nil {
-					out := strings.TrimSpace(string(log))
-					if out != "" {
-						m.commits = strings.Split(out, "\n")
-					}
+					m.commits = parseGitLog(string(log))
 				}
 				if m.cursor >= len(m.commits) {
 					m.cursor = len(m.commits) - 1
@@ -157,6 +156,18 @@ func (m Model) View() string {
 	}
 	body := lipgloss.JoinVertical(lipgloss.Left, sections...)
 	return frame.Render(body) + "\n"
+}
+
+func parseGitLog(output string) []Commit {
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	commits := make([]Commit, 0, len(lines))
+	for _, line := range lines {
+		parts := strings.SplitN(line, " ", 2)
+		if len(parts) == 2 {
+			commits = append(commits, Commit{Hash: parts[0], Subject: parts[1]})
+		}
+	}
+	return commits
 }
 
 func Run() error {
