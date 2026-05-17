@@ -21,6 +21,10 @@ go install github.com/alikhaleghi/gitviz/cmd/gitviz@latest
 
 ## Features
 
+- **Inline diff viewer** — full unified diff with green/red highlighting in details pane
+- **Copy commit hash** — press `y` to copy selected hash to clipboard
+- **Blame view** — press `B` on a file to see line-by-line authorship
+- **Compare commits** — press `Space` on two commits to see the delta
 - **Commit browser** — scroll through recent commits with real-time detail loading
 - **Commit inspector** — author, date, full message, and changed files at a glance
 - **Branch list & checkout** — browse and switch branches inline
@@ -39,6 +43,9 @@ go install github.com/alikhaleghi/gitviz/cmd/gitviz@latest
 | `Esc` | Return to commit list / close modal |
 | `b` | Toggle branch list |
 | `r` | Refresh commit log |
+| `y` | Copy commit hash to clipboard |
+| `Space` | Select commits for comparison |
+| `B` | Open blame view on first file |
 | `q` / `Ctrl+C` | Quit |
 
 ## Getting Started
@@ -121,8 +128,11 @@ make lint     # Run go vet
 - [x] Commit detail inspector
 - [x] Branch list and switcher
 - [x] Branch checkout
+- [x] Inline diff viewer
+- [x] Copy commit hash
+- [x] Blame view
+- [x] Diff between two commits
 - [ ] Graph rendering
-- [ ] Diff viewer
 
 ## Versioning
 
@@ -135,7 +145,7 @@ make lint     # Run go vet
 | `beta` | Feature-complete for milestone, broader testing |
 | *(none)* | Stable release |
 
-Current: `v0.0.1-alpha.1`
+Current: `v0.0.1-alpha.2`
 
 ## Contributing
 
