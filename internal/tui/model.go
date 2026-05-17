@@ -45,6 +45,8 @@ type Model struct {
 	currentBranch  string
 	commitOffset   int
 	commitMaxLines int
+	detailFocus    string
+	diffScroll     int
 	branchMsg      string
 }
 
@@ -105,6 +107,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						break
 					}
 				}
+			} else if m.detailFocus == "diff" {
+				if m.diffScroll > 0 {
+					m.diffScroll--
+				}
 			} else if m.focus == "commits" && m.cursor > 0 {
 				m.cursor--
 				if m.cursor < m.commitOffset {
@@ -121,6 +127,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						break
 					}
 				}
+			} else if m.detailFocus == "diff" {
+				diffLines := strings.Count(m.detail.Diff, "\n") + 1
+				if m.diffScroll < diffLines-1 {
+					m.diffScroll++
+				}
 			} else if m.focus == "commits" && m.cursor < len(m.commits)-1 {
 				m.cursor++
 				if m.commitMaxLines > 0 && m.cursor >= m.commitOffset+m.commitMaxLines {
@@ -134,13 +145,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.branchMsg = ""
 			} else if m.focus == "commits" {
 				m.focus = "details"
-			} else {
-				m.focus = "commits"
+			} else if m.detailFocus == "diff" {
+				m.detailFocus = ""
+			} else if m.detail != nil && m.detail.Diff != "" {
+				m.detailFocus = "diff"
 			}
 		case "shift+tab":
 			if m.showModal {
 				m.showModal = false
 				m.branchMsg = ""
+			} else if m.focus == "details" && m.detailFocus == "diff" {
+				m.detailFocus = ""
 			} else if m.focus == "details" {
 				m.focus = "commits"
 			} else {
@@ -384,7 +399,7 @@ func (m Model) renderMain(width int, mainHeight int) string {
 		m.commitMaxLines = Max(1, mainHeight-3)
 		m = m.clampScroll(m.commitMaxLines)
 		left := m.renderCommitList(leftWidth, m.commitMaxLines)
-		right := m.renderDetails(rightWidth)
+		right := m.renderDetails(rightWidth, mainHeight)
 
 		rightLines := strings.Split(right, "\n")
 		if len(rightLines) > mainHeight-1 {
@@ -405,7 +420,7 @@ func (m Model) renderMain(width int, mainHeight int) string {
 	m.commitMaxLines = Max(1, (mainHeight-2)/2)
 	m = m.clampScroll(m.commitMaxLines)
 	left := m.renderCommitList(width, m.commitMaxLines)
-	right := m.renderDetails(width)
+	right := m.renderDetails(width, mainHeight)
 	sep := StyleMuted.Render(strings.Repeat("─", width))
 
 	combined := lipgloss.JoinVertical(lipgloss.Left, left, sep, right)
