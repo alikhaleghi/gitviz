@@ -8,4 +8,5 @@ dist/
 .idea/
 .vscode/
 docs/issues/*
-AGENTS.md
+  AGENTS.md
+ALPHAROAD.md
