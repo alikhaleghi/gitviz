@@ -15,6 +15,8 @@ func (m Model) renderDetails(width int, detailHeight int) string {
 
 	var body string
 	switch {
+	case m.blameView:
+		body = m.formatBlame(width, detailHeight)
 	case m.detail != nil:
 		body = m.formatDetail(width, detailHeight)
 	case !m.repoDetected:
@@ -122,4 +124,53 @@ func (m Model) formatDetail(width int, detailHeight int) string {
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Left, sections...)
+}
+
+func (m Model) formatBlame(width int, detailHeight int) string {
+	inner := width - 2
+	if inner < 20 {
+		inner = 20
+	}
+
+	title := StyleBold.Render("Blame: " + m.blameFile)
+	fileLines := strings.Split(m.blameFile, "/")
+	shortFile := fileLines[len(fileLines)-1]
+	budget := Max(0, detailHeight-3)
+
+	start := m.blameScroll
+	if start >= len(m.blameLines) {
+		start = Max(0, len(m.blameLines)-1)
+	}
+	end := Min(start+budget, len(m.blameLines))
+	if end <= start {
+		end = Min(start+1, len(m.blameLines))
+	}
+	visible := m.blameLines[start:end]
+
+	prefix := ""
+	if start > 0 {
+		prefix = StyleMuted.Render("  ... (scroll with j/k)")
+	}
+
+	lines := append([]string{prefix}, visible...)
+	colored := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if idx := strings.Index(line, ")"); idx != -1 && idx < 30 {
+			hash := StyleAccent.Render(line[:7])
+			meta := StyleMuted.Render(line[7 : idx+1])
+			content := line[idx+1:]
+			if len(content) > 0 && content[0] == ' ' {
+				content = content[1:]
+			}
+			colored = append(colored, fmt.Sprintf("%s %s %s", hash, meta, content))
+		} else {
+			colored = append(colored, StyleMuted.Render(line))
+		}
+	}
+
+	return lipgloss.JoinVertical(lipgloss.Left,
+		title,
+		StyleMuted.Render("Esc to return  │  j/k scroll  │  "+shortFile),
+		strings.Join(colored, "\n"),
+	)
 }
