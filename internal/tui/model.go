@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -235,6 +236,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.showModal = false
 				m.branchMsg = ""
 			}
+		case "y":
+			if m.detail != nil {
+				hash := m.commits[m.cursor].Hash
+				if err := copyToClipboard(hash); err != nil {
+					m.status = fmt.Sprintf("Failed to copy: %s", err)
+				} else {
+					short := hash
+					if len(short) > 8 {
+						short = hash[:8] + "..."
+					}
+					m.status = fmt.Sprintf("Copied: %s", short)
+				}
+			}
 		}
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -380,6 +394,26 @@ func (m Model) loadDetail(idx int) Model {
 	m.detail = &detail
 	m.status = fmt.Sprintf("Status: inspected %s", hash)
 	return m
+}
+
+func copyToClipboard(text string) error {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("pbcopy")
+	case "windows":
+		cmd = exec.Command("clip")
+	default:
+		if _, err := exec.LookPath("xclip"); err == nil {
+			cmd = exec.Command("xclip", "-selection", "clipboard")
+		} else if _, err := exec.LookPath("xsel"); err == nil {
+			cmd = exec.Command("xsel", "--clipboard", "--input")
+		} else {
+			return fmt.Errorf("no clipboard command found (install xclip or xsel)")
+		}
+	}
+	cmd.Stdin = strings.NewReader(text)
+	return cmd.Run()
 }
 
 func Run() error {

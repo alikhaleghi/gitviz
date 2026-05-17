@@ -12,7 +12,7 @@ func (m Model) renderStatus(width int) string {
 }
 
 func (m Model) renderFooter(width int) string {
-	help := "q quit  r refresh  ↑↓/w s move  enter/e inspect  b branches"
+	help := "q quit  r refresh  ↑↓/w s move  y copy hash  enter/e inspect  b branches"
 	if m.showModal {
 		help = "↑↓ nav  esc close"
 	} else if m.detailFocus == "diff" {
