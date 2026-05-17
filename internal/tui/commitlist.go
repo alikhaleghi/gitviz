@@ -44,9 +44,24 @@ func (m Model) renderCommitList(width int, maxLines int) string {
 		line := fmt.Sprintf("%s  %s", StyleMuted.Render(commit.Hash), subject)
 		prefix := "  "
 		style := StyleNormal
+
+		compareIdx := -1
+		for ci, si := range m.compareSelected {
+			if si == i {
+				compareIdx = ci
+				break
+			}
+		}
+		if compareIdx >= 0 {
+			prefix = fmt.Sprintf("%d ", compareIdx+1)
+			style = StyleAccent
+		}
 		if i == m.cursor {
 			prefix = "▸ "
 			style = StyleSelected
+			if compareIdx >= 0 {
+				prefix = fmt.Sprintf("▸%d", compareIdx+1)
+			}
 		}
 		items = append(items, prefix+style.Render(line))
 	}
