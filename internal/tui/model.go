@@ -48,6 +48,10 @@ type Model struct {
 	commitMaxLines int
 	detailFocus    string
 	diffScroll     int
+	blameView      bool
+	blameFile      string
+	blameLines     []string
+	blameScroll    int
 	branchMsg      string
 }
 
@@ -108,6 +112,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						break
 					}
 				}
+			} else if m.blameView {
+				if m.blameScroll > 0 {
+					m.blameScroll--
+				}
 			} else if m.detailFocus == "diff" {
 				if m.diffScroll > 0 {
 					m.diffScroll--
@@ -127,6 +135,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.branchCursor = i
 						break
 					}
+				}
+			} else if m.blameView {
+				if m.blameScroll < len(m.blameLines)-1 {
+					m.blameScroll++
 				}
 			} else if m.detailFocus == "diff" {
 				diffLines := strings.Count(m.detail.Diff, "\n") + 1
@@ -204,10 +216,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.focus = "details"
 				}
 			}
+		case "B":
+			if m.detail != nil && !m.blameView {
+				if len(m.detail.Files) == 0 {
+					m.status = "Status: no files to blame"
+				} else {
+					path := m.detail.Files[0]
+					if parts := strings.SplitN(path, "\t", 2); len(parts) == 2 {
+						path = parts[1]
+					}
+					m = m.loadBlame(path)
+				}
+			}
 		case "esc":
 			if m.showModal {
 				m.showModal = false
 				m.branchMsg = ""
+			} else if m.blameView {
+				m.blameView = false
+				m.blameFile = ""
+				m.blameLines = nil
+				m.blameScroll = 0
+				m.focus = "details"
 			} else if m.focus == "details" {
 				m.focus = "commits"
 			}
@@ -393,6 +423,22 @@ func (m Model) loadDetail(idx int) Model {
 	}
 	m.detail = &detail
 	m.status = fmt.Sprintf("Status: inspected %s", hash)
+	return m
+}
+
+func (m Model) loadBlame(filePath string) Model {
+	hash := m.commits[m.cursor].Hash
+	out, err := exec.Command("git", "blame", "--date=short", hash, "--", filePath).Output()
+	if err != nil {
+		m.status = fmt.Sprintf("Failed to blame: %s", err)
+		return m
+	}
+	m.blameView = true
+	m.blameFile = filePath
+	m.blameLines = strings.Split(strings.TrimSuffix(string(out), "\n"), "\n")
+	m.blameScroll = 0
+	m.focus = "details"
+	m.status = fmt.Sprintf("Blame: %s (%d lines)", filePath, len(m.blameLines))
 	return m
 }
 
