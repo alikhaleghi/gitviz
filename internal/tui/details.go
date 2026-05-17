@@ -68,5 +68,28 @@ func (m Model) formatDetail(width int) string {
 		sections = append(sections, header, strings.Join(fileLines, "\n"))
 	}
 
+	if d.Diff != "" {
+		header := StyleBold.Render("── Diff ──")
+		lines := strings.Split(d.Diff, "\n")
+		var diffLines []string
+		for _, line := range lines {
+			if len(line) > 0 {
+				switch line[0] {
+				case '+':
+					diffLines = append(diffLines, StyleAdd.Render(line))
+				case '-':
+					diffLines = append(diffLines, StyleDel.Render(line))
+				case '@':
+					diffLines = append(diffLines, StyleHunk.Render(line))
+				default:
+					diffLines = append(diffLines, StyleMuted.Render(line))
+				}
+			} else {
+				diffLines = append(diffLines, "")
+			}
+		}
+		sections = append(sections, "", header, strings.Join(diffLines, "\n"))
+	}
+
 	return lipgloss.JoinVertical(lipgloss.Left, sections...)
 }

@@ -24,6 +24,7 @@ type CommitDetail struct {
 	Date   string
 	Body   string
 	Files  []string
+	Diff   string
 }
 
 // Model owns UI state for the initial scaffold.
@@ -320,6 +321,11 @@ func fetchCommitDetail(hash string) (CommitDetail, error) {
 		if raw != "" {
 			detail.Files = strings.Split(raw, "\n")
 		}
+	}
+
+	diff, err := exec.Command("git", "show", "--format=", "--unified=3", hash).Output()
+	if err == nil {
+		detail.Diff = strings.TrimSuffix(string(diff), "\n")
 	}
 
 	return detail, nil
