@@ -15,6 +15,8 @@ func (m Model) renderDetails(width int, detailHeight int) string {
 
 	var body string
 	switch {
+	case m.compareMode:
+		body = m.formatCompare(width, detailHeight)
 	case m.blameView:
 		body = m.formatBlame(width, detailHeight)
 	case m.detail != nil:
@@ -172,5 +174,58 @@ func (m Model) formatBlame(width int, detailHeight int) string {
 		title,
 		StyleMuted.Render("Esc to return  │  j/k scroll  │  "+shortFile),
 		strings.Join(colored, "\n"),
+	)
+}
+
+func (m Model) formatCompare(width int, detailHeight int) string {
+	inner := width - 2
+	if inner < 20 {
+		inner = 20
+	}
+
+	first := m.commits[m.compareSelected[0]].Hash[:8]
+	second := m.commits[m.compareSelected[1]].Hash[:8]
+	title := StyleBold.Render(fmt.Sprintf("Compare: %s..%s", first, second))
+	budget := Max(0, detailHeight-3)
+
+	allLines := strings.Split(m.compareDiff, "\n")
+	var colored []string
+	for _, line := range allLines {
+		if len(line) > 0 {
+			switch line[0] {
+			case '+':
+				colored = append(colored, StyleAdd.Render(line))
+			case '-':
+				colored = append(colored, StyleDel.Render(line))
+			case '@':
+				colored = append(colored, StyleHunk.Render(line))
+			default:
+				colored = append(colored, StyleMuted.Render(line))
+			}
+		} else {
+			colored = append(colored, "")
+		}
+	}
+
+	start := m.compareScroll
+	if start >= len(colored) {
+		start = Max(0, len(colored)-1)
+	}
+	end := Min(start+budget, len(colored))
+	if end <= start {
+		end = Min(start+1, len(colored))
+	}
+	visible := colored[start:end]
+
+	prefix := ""
+	if start > 0 {
+		prefix = StyleMuted.Render("  ... (scroll with j/k)")
+	}
+
+	lines := append([]string{prefix}, visible...)
+	return lipgloss.JoinVertical(lipgloss.Left,
+		title,
+		StyleMuted.Render("Esc to clear compare"),
+		strings.Join(lines, "\n"),
 	)
 }

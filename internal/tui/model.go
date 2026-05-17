@@ -30,29 +30,33 @@ type CommitDetail struct {
 
 // Model owns UI state for the initial scaffold.
 type Model struct {
-	width          int
-	height         int
-	path           string
-	repoDetected   bool
-	view           string
-	status         string
-	commits        []Commit
-	detail         *CommitDetail
-	cursor         int
-	focus          string
-	showModal      bool
-	branches       []Branch
-	branchCursor   int
-	currentBranch  string
-	commitOffset   int
-	commitMaxLines int
-	detailFocus    string
-	diffScroll     int
-	blameView      bool
-	blameFile      string
-	blameLines     []string
-	blameScroll    int
-	branchMsg      string
+	width           int
+	height          int
+	path            string
+	repoDetected    bool
+	view            string
+	status          string
+	commits         []Commit
+	detail          *CommitDetail
+	cursor          int
+	focus           string
+	showModal       bool
+	branches        []Branch
+	branchCursor    int
+	currentBranch   string
+	commitOffset    int
+	commitMaxLines  int
+	detailFocus     string
+	diffScroll      int
+	blameView       bool
+	blameFile       string
+	blameLines      []string
+	blameScroll     int
+	compareMode     bool
+	compareSelected []int
+	compareDiff     string
+	compareScroll   int
+	branchMsg       string
 }
 
 // NewModel builds a default model with lightweight runtime context.
@@ -116,6 +120,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.blameScroll > 0 {
 					m.blameScroll--
 				}
+			} else if m.compareMode {
+				if m.compareScroll > 0 {
+					m.compareScroll--
+				}
 			} else if m.detailFocus == "diff" {
 				if m.diffScroll > 0 {
 					m.diffScroll--
@@ -139,6 +147,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else if m.blameView {
 				if m.blameScroll < len(m.blameLines)-1 {
 					m.blameScroll++
+				}
+			} else if m.compareMode {
+				diffLines := strings.Count(m.compareDiff, "\n") + 1
+				if m.compareScroll < diffLines-1 {
+					m.compareScroll++
 				}
 			} else if m.detailFocus == "diff" {
 				diffLines := strings.Count(m.detail.Diff, "\n") + 1
@@ -232,6 +245,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.showModal {
 				m.showModal = false
 				m.branchMsg = ""
+			} else if m.compareMode {
+				m.compareMode = false
+				m.compareDiff = ""
+				m.compareSelected = nil
+				m.compareScroll = 0
+				m.focus = "commits"
+				m.status = "Compare mode cleared"
 			} else if m.blameView {
 				m.blameView = false
 				m.blameFile = ""
@@ -265,6 +285,52 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else if m.showModal {
 				m.showModal = false
 				m.branchMsg = ""
+			}
+		case " ":
+			if m.repoDetected && !m.showModal && !m.blameView && m.focus == "commits" && m.cursor < len(m.commits) {
+				found := -1
+				for i, s := range m.compareSelected {
+					if s == m.cursor {
+						found = i
+						break
+					}
+				}
+				if found >= 0 {
+					m.compareSelected = append(m.compareSelected[:found], m.compareSelected[found+1:]...)
+					m.compareDiff = ""
+				} else if len(m.compareSelected) < 2 {
+					m.compareSelected = append(m.compareSelected, m.cursor)
+				}
+				if len(m.compareSelected) == 2 {
+					first := m.commits[m.compareSelected[0]].Hash
+					second := m.commits[m.compareSelected[1]].Hash
+					if first > second {
+						first, second = second, first
+					}
+					out, err := exec.Command("git", "diff", "--stat", first+".."+second).CombinedOutput()
+					if err != nil {
+						m.status = fmt.Sprintf("Diff failed: %s", strings.TrimSpace(string(out)))
+						m.compareDiff = ""
+					} else {
+						stat := strings.TrimSpace(string(out))
+						fullOut, fullErr := exec.Command("git", "diff", first+".."+second).CombinedOutput()
+						full := ""
+						if fullErr == nil {
+							full = strings.TrimSuffix(string(fullOut), "\n")
+						}
+						m.compareDiff = stat + "\n\n" + full
+						m.compareScroll = 0
+						m.compareMode = true
+						m.focus = "details"
+						m.status = fmt.Sprintf("Comparing: %s..%s", first[:8], second[:8])
+					}
+				} else {
+					m.compareDiff = ""
+					m.compareMode = false
+					if len(m.compareSelected) == 1 {
+						m.status = "Selecting: 1/2 — press Space on another commit"
+					}
+				}
 			}
 		case "y":
 			if m.detail != nil {
